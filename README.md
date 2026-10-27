@@ -95,6 +95,24 @@ Check `plugins/playit-gg/native-agent.log` for underlying agent errors.
 On first startup it may take some time for the download and tunnel setup
 to finish. Do not run multiple agents with the same key.
 
+## Avoid duplicate voice UDP tunnels
+
+The Playit voice-chat preset (`mc-simple-voice-chat`) is the preferred option.
+The native auto-provisioner now requests this dedicated preset, not a generic
+single-port UDP tunnel. It also recognizes an existing voice preset for this
+agent before requesting another one.
+
+If an older build already created a `VoxelHorizons Voice` tunnel under the
+generic UDP category, **turn off automatic voice provisioning first** using
+`auto_create_voice_tunnel: false` and restart, then delete only the redundant
+generic UDP tunnel from the Playit dashboard. Keep the **MC: Simple Voice Chat**
+tunnel and configure the public host and port it currently shows as
+`voice_host` in `plugins/voicechat/voicechat-server.properties`.
+
+Re-enable `auto_create_voice_tunnel: true` later if desired; with the updated
+build, an existing voice preset should prevent another UDP tunnel being created.
+The plugin never deletes an account tunnel automatically.
+
 ## Admin commands
 
 | Command | Purpose |
