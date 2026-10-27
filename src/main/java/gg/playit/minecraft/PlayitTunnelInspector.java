@@ -80,6 +80,12 @@ public final class PlayitTunnelInspector {
                     + protocol + ") => " + address + " [local port: "
                     + (localPort > 0 ? localPort : "check dashboard") + "]"
                     + (disabled.isEmpty() ? "" : " [disabled: " + disabled + "]"));
+            if ("Java / TCP".equals(purpose) && localPort <= 0) {
+                messages.add("   WARNING: No explicit local Java port is reported! Native Playit "
+                        + "may skip this tunnel if the public address has no numeric port.");
+                messages.add("   Run /playit createtunnels to check/repair the Java destination "
+                        + "or set the local port in the Playit dashboard.");
+            }
             if ("Voice".equals(purpose) && !"address pending".equals(address)) {
                 messages.add("   Simple Voice Chat: set voice_host=" + address
                         + " in plugins/voicechat/voicechat-server.properties");
