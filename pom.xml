@@ -6,7 +6,7 @@
 
     <groupId>gg.playit.gg</groupId>
     <artifactId>playit-minecraft-java-plugin</artifactId>
-    <version>0.1.4</version>
+    <version>0.2.3-vh</version>
 
     <properties>
         <maven.compiler.source>16</maven.compiler.source>
@@ -52,10 +52,21 @@
             <type>jar</type>
             <scope>provided</scope>
         </dependency>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <version>5.11.4</version>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <build>
         <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>3.5.2</version>
+            </plugin>
             <plugin>
                 <artifactId>maven-assembly-plugin</artifactId>
                 <executions>
