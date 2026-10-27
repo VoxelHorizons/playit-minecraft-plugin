@@ -4,11 +4,13 @@ mc-timeout-sec: 30
 
 # "plugin" = backwards-compatible built-in TCP-only agent.
 # "native" = launch the official playitd agent (TCP + UDP, including Geyser and voice).
-# Install the official playitd binary yourself and set native-binary to its full
-# executable path if it is not on the Minecraft server's PATH.
+# On supported Linux servers the plugin installs a SHA-256 verified official
+# playitd v1.0.12 binary under plugins/playit-gg/bin/ automatically.
+# To use an existing binary, disable native-auto-install and set its path.
 # Do not run another copy of playitd with the SAME agent secret.
 agent-backend: "plugin"
 native-binary: "playitd"
+native-auto-install: true
 
 # These settings only provision tunnels in native mode. The native agent
 # carries packets; a tunnel entry alone is NOT sufficient in plugin mode.
