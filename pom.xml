@@ -6,7 +6,7 @@
 
     <groupId>gg.playit.gg</groupId>
     <artifactId>playit-minecraft-java-plugin</artifactId>
-    <version>0.2.0-vh</version>
+    <version>0.2.1-vh</version>
 
     <properties>
         <maven.compiler.source>16</maven.compiler.source>
