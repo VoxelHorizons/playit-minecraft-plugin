@@ -186,8 +186,12 @@ public final class PlayitBukkit extends JavaPlugin implements Listener {
             // Keep the managed process alive without blocking the Minecraft thread.
             Bukkit.getScheduler().runTaskTimerAsynchronously(this, () -> {
                 PlayitNativeAgent agent = nativeAgent;
-                if (agent != null) {
-                    agent.keepAlive(nativeSecret);
+                if (agent != null && nativeLaunchBusy.compareAndSet(false, true)) {
+                    try {
+                        agent.keepAlive(nativeSecret);
+                    } finally {
+                        nativeLaunchBusy.set(false);
+                    }
                 }
             }, 20L * 30, 20L * 30);
             log.info("Native backend active. Configure Java TCP, Geyser UDP and voice UDP "
