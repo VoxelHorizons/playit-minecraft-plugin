@@ -79,9 +79,19 @@ public final class PlayitNativeAgent {
                     executable, "--secret-path", secretFile.toString(),
                     "--socket-path", dataDir.resolve("playitd.sock").toString());
             builder.directory(dataDir.toFile());
-            // Never pipe (or print) the agent's secret or unbounded output.
+            // Keep private diagnostics without blocking on undrained process output.
+            // Rotate previous output before launch so restarts do not grow it forever.
+            Path nativeLog = dataDir.resolve("native-agent.log");
+            if (Files.exists(nativeLog) && Files.size(nativeLog) > 2L * 1024 * 1024) {
+                Files.move(nativeLog, dataDir.resolve("native-agent.previous.log"),
+                        StandardCopyOption.REPLACE_EXISTING);
+            }
+            if (Files.notExists(nativeLog)) {
+                Files.createFile(nativeLog);
+            }
+            restrictToOwner(nativeLog);
             builder.redirectErrorStream(true);
-            builder.redirectOutput(ProcessBuilder.Redirect.DISCARD);
+            builder.redirectOutput(ProcessBuilder.Redirect.appendTo(nativeLog.toFile()));
             process = builder.start();
             suspended = false;
             log.info("[playit.gg] Started native playitd (PID " + process.pid() + "). "
