@@ -138,7 +138,7 @@ public final class PlayitBukkit extends JavaPlugin implements Listener {
         getConfig().addDefault("agent-secret", "");
         getConfig().addDefault(CFG_AUTO_CREATE_BEDROCK_TUNNEL, false);
         getConfig().addDefault(CFG_PROMPT_ADMIN_FOR_BEDROCK, true);
-        getConfig().addDefault(CFG_JAVA_LOCAL_PORT, 25565);
+        getConfig().addDefault(CFG_JAVA_LOCAL_PORT, 0);
         getConfig().addDefault(CFG_BEDROCK_LOCAL_PORT, 19132);
         getConfig().addDefault(CFG_VOICE_LOCAL_PORT, 24454);
         getConfig().addDefault(CFG_AGENT_BACKEND, "plugin");
@@ -150,7 +150,15 @@ public final class PlayitBukkit extends JavaPlugin implements Listener {
         // Read config values
         autoCreateBedrockTunnel = getConfig().getBoolean(CFG_AUTO_CREATE_BEDROCK_TUNNEL, false);
         promptAdminForBedrock = getConfig().getBoolean(CFG_PROMPT_ADMIN_FOR_BEDROCK, true);
-        javaLocalPort = getConfig().getInt(CFG_JAVA_LOCAL_PORT, 25565);
+        javaLocalPort = getConfig().getInt(CFG_JAVA_LOCAL_PORT, 0);
+        if (javaLocalPort == 0) {
+            javaLocalPort = server.getPort();
+            log.info("Auto-detected Minecraft Java TCP port: " + javaLocalPort);
+        }
+        if (javaLocalPort < 1 || javaLocalPort > 65535) {
+            log.warning("Invalid Java local port; falling back to Bukkit.getPort()");
+            javaLocalPort = server.getPort();
+        }
         bedrockLocalPort = getConfig().getInt(CFG_BEDROCK_LOCAL_PORT, 19132);
         voiceLocalPort = detectVoicePort(getConfig().getInt(CFG_VOICE_LOCAL_PORT, 24454));
 
