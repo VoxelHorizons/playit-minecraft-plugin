@@ -70,7 +70,12 @@ public class PlayitTunnelHelper {
                     log.info("[PlayitTunnelHelper] Found existing Java tunnel: " + tunnel.displayAddress);
                 }
                 // Check for both MinecraftBedrock and Custom UDP tunnels (Custom is used as fallback for Bedrock)
-                if ((tunnel.tunnelType == TunnelType.MinecraftBedrock || tunnel.tunnelType == TunnelType.Custom) && tunnel.portType == PortType.UDP) {
+                if ((tunnel.tunnelType == TunnelType.MinecraftBedrock
+                            || (tunnel.tunnelType == TunnelType.Custom
+                                && tunnel.name != null
+                                && (tunnel.name.toLowerCase(java.util.Locale.ROOT).contains("bedrock")
+                                    || tunnel.name.toLowerCase(java.util.Locale.ROOT).contains("geyser"))))
+                            && tunnel.portType == PortType.UDP) {
                     status.hasBedrockTunnel = true;
                     status.bedrockTunnelAddress = tunnel.displayAddress;
                     log.info("[PlayitTunnelHelper] Found existing Bedrock/UDP tunnel: " + tunnel.displayAddress + " (type: " + tunnel.tunnelType + ")");
