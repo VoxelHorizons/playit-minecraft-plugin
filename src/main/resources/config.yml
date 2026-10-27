@@ -1,12 +1,27 @@
-mc-timeout-sec: 30
+# Playit agent credentials. Treat this as a password.
 agent-secret: ""
+mc-timeout-sec: 30
 
-# Geyser/Bedrock tunnel settings
-# Automatically create a Bedrock tunnel if Geyser-Spigot is detected
-auto_create_bedrock_tunnel: false
-# Prompt admin to confirm Bedrock tunnel creation (if auto_create_bedrock_tunnel is false)
+# "plugin" = backwards-compatible built-in TCP-only agent.
+# "native" = launch the official playitd agent (TCP + UDP, including Geyser and voice).
+# Install the official playitd binary yourself and set native-binary to its full
+# executable path if it is not on the Minecraft server's PATH.
+# Do not run another copy of playitd with the SAME agent secret.
+agent-backend: "plugin"
+native-binary: "playitd"
+
+# These settings only provision tunnels in native mode. The native agent
+# carries packets; a tunnel entry alone is NOT sufficient in plugin mode.
+auto_create_java_tunnel: true
+auto_create_bedrock_tunnel: true
+auto_create_voice_tunnel: true
+
+# In plugin (TCP-only) mode, warn operators about missing Bedrock tunneling.
 prompt_admin_for_bedrock: true
-# Local port for Java Minecraft tunnel (TCP)
+
+# TCP listener and UDP listeners. Match the actual Paper, Geyser and
+# Simple Voice Chat configuration. Geyser and voice ports are auto-detected
+# from their configuration files when available.
 java_local_port: 25565
-# Local port for Bedrock Minecraft tunnel (UDP) - should match Geyser's bedrock port
 bedrock_local_port: 19132
+voice_local_port: 24454
