@@ -1,5 +1,5 @@
 name: playit-gg
-version: 0.2.0-vh
+version: 0.2.1-vh
 main: gg.playit.minecraft.PlayitBukkit
 author: https://playit.gg
 description: Playit Java TCP and optional native Bedrock/voice UDP tunneling
