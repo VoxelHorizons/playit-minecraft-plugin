@@ -135,7 +135,12 @@ public class PlayitKeysSetup {
                         log.info("found minecraft java tunnel: " + keys.tunnelAddress);
                     }
                     // Check for both MinecraftBedrock and Custom UDP tunnels (Custom is used as fallback for Bedrock)
-                    if ((tunnel.tunnelType == TunnelType.MinecraftBedrock || tunnel.tunnelType == TunnelType.Custom) && tunnel.portType == PortType.UDP) {
+                    if ((tunnel.tunnelType == TunnelType.MinecraftBedrock
+                            || (tunnel.tunnelType == TunnelType.Custom
+                                && tunnel.name != null
+                                && (tunnel.name.toLowerCase(java.util.Locale.ROOT).contains("bedrock")
+                                    || tunnel.name.toLowerCase(java.util.Locale.ROOT).contains("geyser"))))
+                            && tunnel.portType == PortType.UDP) {
                         keys.bedrockTunnelAddress = tunnel.displayAddress;
                         haveBedrock = true;
                         log.info("found minecraft bedrock/UDP tunnel: " + tunnel.displayAddress + " (type: " + tunnel.tunnelType + ")");
