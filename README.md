@@ -16,9 +16,10 @@ Bedrock and voice actually work, this fork can start and supervise the official
 - For proximity voice: Simple Voice Chat on the server and **on Java clients**.
   Its UDP port defaults to `24454`. This does not automatically add Bedrock
   voice-chat support.
-- To forward UDP: a separately installed, official `playitd` executable from
-  https://playit.gg/download (version 1.0+ recommended), runnable by your
-  Minecraft server user, with outbound Playit access.
+- To forward UDP: Linux on a supported architecture (x86_64, arm64, armv7, i686)
+  with outbound access to GitHub Releases and Playit. The plugin downloads the
+  official `playitd` v1.0.12 automatically, checking its pinned SHA-256 checksum.
+  Custom or unsupported platforms may use their own `native-binary` path.
 
 **Do not download an untrusted Playit binary or run both the embedded plugin
 agent and playitd using the same key.** Native mode starts only the latter.
@@ -28,13 +29,13 @@ agent and playitd using the same key.** Native mode starts only the latter.
 1. If you have never claimed the Playit account/agent, initially leave
    `agent-backend: plugin`. Start the server, follow the Playit claim URL from
    the console, and allow the resulting `agent-secret` to be saved.
-2. Stop the Minecraft server. Install `playitd` for your host/container and
-   ensure it runs with `playitd --help`. In `plugins/playit-gg/config.yml`
-   set:
+2. Stop the Minecraft server. No manual `playitd` installation is necessary
+   on supported Linux servers. In `plugins/playit-gg/config.yml` set:
 
    ```yaml
    agent-backend: native
    native-binary: playitd
+   native-auto-install: true
    auto_create_java_tunnel: true
    auto_create_bedrock_tunnel: true
    auto_create_voice_tunnel: true
@@ -43,11 +44,14 @@ agent and playitd using the same key.** Native mode starts only the latter.
    voice_local_port: 24454
    ```
 
-   For Pterodactyl, the playitd binary **must be executable inside the server
-   container**, not merely installed on the host. Absolute paths are supported
-   for `native-binary`. No port forwarding is required.
-3. Start the server. The native agent process starts automatically and the
-   plugin asks Playit's v1 API to create missing tunnels for services it detects.
+   On Pterodactyl, the plugin stores a verified executable in
+   `/home/container/plugins/playit-gg/bin/` and runs it without root access.
+   The Docker container must permit executing files from that path.
+   Disable `native-auto-install` to use a manually supplied executable.
+   No port forwarding is required.
+3. Start the server. The official daemon is installed (if necessary) and
+   started asynchronously, without blocking the Minecraft main thread.
+   The plugin also asks Playit's v1 API to create missing tunnels for services it detects.
    If the account plan, region, or API rejects a request, review server logs.
 4. Run `/playit agent status` and `/playit tunnels` as a server operator.
    `/playit createtunnels` retries **Java, Geyser and voice** tunnel requests
@@ -73,6 +77,23 @@ agent and playitd using the same key.** Native mode starts only the latter.
    address reported by Playit**, not the Minecraft Java address or the local
    port. Restart Simple Voice Chat/the Minecraft server after changing it.
    The voice mod must be installed on each participating Java client.
+
+## Automatic native installation / troubleshooting
+
+The installation occurs only when `agent-backend: native` and
+`native-auto-install: true` (the default). An existing old configuration
+with `native-binary: playitd` also works. The official v1.0.12 binary is
+cached under `plugins/playit-gg/bin/` and reverified before every launch.
+It is downloaded from the official GitHub release (not a third-party mirror)
+with a SHA-256 hash pinned in the source code.
+
+If GitHub is blocked, the filesystem is mounted `noexec`, or the server
+runs on an unsupported OS/architecture, the Minecraft server continues
+running and logs a diagnostic. Supply a compatible local executable and set
+`native-auto-install: false` with its full `native-binary` path.
+Check `plugins/playit-gg/native-agent.log` for underlying agent errors.
+On first startup it may take some time for the download and tunnel setup
+to finish. Do not run multiple agents with the same key.
 
 ## Admin commands
 
