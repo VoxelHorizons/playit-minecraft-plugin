@@ -592,9 +592,8 @@ public final class PlayitBukkit extends JavaPlugin implements Listener {
         }
         switch (args[1].toLowerCase(java.util.Locale.ROOT)) {
             case "restart" -> {
-                sender.sendMessage(agent.restart(nativeSecret)
-                        ? ChatColor.GREEN + "Native playitd restarted."
-                        : ChatColor.RED + "Native playitd failed to start; check logs.");
+                sender.sendMessage(ChatColor.AQUA + "[playit.gg] Starting native agent...");
+                launchNativeAgent(sender, true);
                 return true;
             }
             case "shutdown" -> {
