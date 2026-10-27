@@ -99,6 +99,59 @@ public final class PlayitTunnelProvisioner {
         }
     }
 
+    private void checkJavaDestination(JsonNode tunnels, String agentId, int port,
+                                      List<String> results) {
+        for (JsonNode tunnel : tunnels) {
+            JsonNode origin = tunnel.path("origin");
+            JsonNode details = origin.path("details");
+            if (!"minecraft-java".equals(tunnel.path("tunnel_type").asText())
+                    || !"tcp".equals(tunnel.path("port_type").asText())
+                    || !"agent".equals(origin.path("type").asText())
+                    || !agentId.equals(details.path("agent_id").asText())) continue;
+
+            ArrayNode fields = mapper.createArrayNode();
+            JsonNode existing = details.path("config_data").path("fields");
+            if (existing.isArray()) existing.forEach(field -> fields.add(field.deepCopy()));
+
+            for (JsonNode field : fields) {
+                if ("local_port".equals(field.path("name").asText())) {
+                    int configured = field.path("value").asInt(-1);
+                    results.add(configured == port
+                            ? "Java: existing local destination TCP " + port
+                            : "Java: existing local port " + configured
+                                + " differs from server port " + port + "; check dashboard");
+                    return;
+                }
+            }
+
+            String id = tunnel.path("id").asText();
+            if (id.isBlank()) {
+                results.add("Java: missing local port, but cannot identify tunnel to repair");
+                return;
+            }
+
+            boolean hasIp = false;
+            for (JsonNode field : fields) {
+                if ("local_ip".equals(field.path("name").asText())) hasIp = true;
+            }
+            if (!hasIp) fields.addObject().put("name", "local_ip").put("value", "127.0.0.1");
+            fields.addObject().put("name", "local_port").put("value", Integer.toString(port));
+
+            ObjectNode update = mapper.createObjectNode();
+            update.put("tunnel_id", id);
+            update.putObject("new_config").set("fields", fields);
+            try {
+                call("/v1/tunnels/config", update);
+                results.add("Java: repaired missing destination port to TCP " + port
+                        + " (public address unchanged)");
+            } catch (IOException error) {
+                results.add("Java: destination port missing; API repair failed: "
+                        + error.getMessage() + "; set local port " + port + " in dashboard");
+            }
+            return;
+        }
+    }
+
     static boolean exists(JsonNode tunnels, String agentId, String label,
                           String preset, String protocol, int port) {
         for (JsonNode tunnel : tunnels) {
