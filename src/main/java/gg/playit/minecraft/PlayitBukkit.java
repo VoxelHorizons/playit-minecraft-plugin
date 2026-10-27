@@ -551,6 +551,35 @@ public final class PlayitBukkit extends JavaPlugin implements Listener {
         return configuredPort;
     }
 
+    /** Installs or restarts the daemon on a worker, never on Paper's tick thread. */
+    private void launchNativeAgent(CommandSender requester, boolean restart) {
+        if (!nativeLaunchBusy.compareAndSet(false, true)) {
+            if (requester != null) requester.sendMessage(ChatColor.YELLOW
+                    + "[playit.gg] Native agent is already starting; use /playit agent status.");
+            return;
+        }
+        Bukkit.getScheduler().runTaskAsynchronously(this, () -> {
+            boolean success = false;
+            try {
+                PlayitNativeAgent agent = nativeAgent;
+                if (agent != null) {
+                    success = restart ? agent.restart(nativeSecret) : agent.start(nativeSecret);
+                }
+            } catch (RuntimeException error) {
+                log.warning("[playit.gg] Native agent startup error: " + error.getMessage());
+            } finally {
+                nativeLaunchBusy.set(false);
+            }
+            if (requester != null && isEnabled()) {
+                final boolean started = success;
+                Bukkit.getScheduler().runTask(this, () -> requester.sendMessage(
+                        started ? ChatColor.GREEN + "[playit.gg] Native agent launched."
+                                : ChatColor.RED + "[playit.gg] Native agent failed; "
+                                + "check /playit agent status and the server logs."));
+            }
+        });
+    }
+
     private boolean handleNativeAgentCommand(CommandSender sender, String[] args) {
         PlayitNativeAgent agent = nativeAgent;
         if (args.length < 2 || "status".equalsIgnoreCase(args[1])) {
