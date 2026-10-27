@@ -34,6 +34,7 @@ public final class PlayitBukkit extends JavaPlugin implements Listener {
     public static final String CFG_VOICE_LOCAL_PORT = "voice_local_port";
     public static final String CFG_AGENT_BACKEND = "agent-backend";
     public static final String CFG_NATIVE_BINARY = "native-binary";
+    public static final String CFG_NATIVE_AUTO_INSTALL = "native-auto-install";
 
     static Logger log = Logger.getLogger(PlayitBukkit.class.getName());
     final EventLoopGroup eventGroup = new NioEventLoopGroup();
@@ -143,6 +144,7 @@ public final class PlayitBukkit extends JavaPlugin implements Listener {
         getConfig().addDefault(CFG_VOICE_LOCAL_PORT, 24454);
         getConfig().addDefault(CFG_AGENT_BACKEND, "plugin");
         getConfig().addDefault(CFG_NATIVE_BINARY, "playitd");
+        getConfig().addDefault(CFG_NATIVE_AUTO_INSTALL, true);
         getConfig().addDefault("auto_create_java_tunnel", true);
         getConfig().addDefault("auto_create_voice_tunnel", true);
         saveDefaultConfig();
