@@ -33,7 +33,7 @@ public final class PlayitTunnelProvisioner {
         List<String> results = new ArrayList<>();
         if (javaEnabled) ensureOne(tunnels, agentId, "Java", "minecraft-java", "tcp", javaPort, results);
         if (bedrockEnabled) ensureOne(tunnels, agentId, "Bedrock", "minecraft-bedrock", "udp", bedrockPort, results);
-        if (voiceEnabled) ensureOne(tunnels, agentId, "Voice", null, "udp", voicePort, results);
+        if (voiceEnabled) ensureOne(tunnels, agentId, "Voice", "mc-simple-voice-chat", "udp", voicePort, results);
         return results;
     }
 
