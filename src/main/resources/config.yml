@@ -20,8 +20,8 @@ auto_create_voice_tunnel: true
 prompt_admin_for_bedrock: true
 
 # TCP listener and UDP listeners. Match the actual Paper, Geyser and
-# Simple Voice Chat configuration. Geyser and voice ports are auto-detected
+# Simple Voice Chat configuration. Java 0 auto-detects Bukkit.getPort(). Geyser and voice ports are auto-detected
 # from their configuration files when available.
-java_local_port: 25565
+java_local_port: 0
 bedrock_local_port: 19132
 voice_local_port: 24454
