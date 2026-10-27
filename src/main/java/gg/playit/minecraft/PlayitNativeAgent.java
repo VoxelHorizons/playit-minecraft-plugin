@@ -21,14 +21,18 @@ public final class PlayitNativeAgent {
     private final Logger log;
     private final Path dataDir;
     private final String executable;
+    private final boolean autoInstall;
     private Process process;
-    private boolean suspended;
-    private long lastLaunchAttempt;
+    private volatile boolean suspended;
+    private volatile boolean installing;
+    private volatile long lastLaunchAttempt;
+    private volatile String lastFailure;
 
-    public PlayitNativeAgent(Logger log, Path dataDir, String executable) {
+    public PlayitNativeAgent(Logger log, Path dataDir, String executable, boolean autoInstall) {
         this.log = log;
         this.dataDir = dataDir.toAbsolutePath().normalize();
-        this.executable = executable == null || executable.isBlank() ? "playitd" : executable;
+        this.executable = executable == null || executable.isBlank() ? "auto" : executable;
+        this.autoInstall = autoInstall;
     }
 
     public synchronized boolean isRunning() {
@@ -39,85 +43,121 @@ public final class PlayitNativeAgent {
         if (isRunning()) {
             return "native playitd process running (check /playit tunnels for tunnel assignments)";
         }
-        return suspended ? "stopped by administrator" : "native playitd process offline";
+        if (installing) {
+            return "installing/starting verified Playit daemon (see server logs)";
+        }
+        if (suspended) {
+            return "stopped by administrator";
+        }
+        return lastFailure != null ? "offline: " + lastFailure : "native playitd process offline";
     }
 
     /**
      * The plugin owns the daemon process in this mode. Do not run a second
      * playit daemon with the same agent secret simultaneously.
      */
-    public synchronized boolean start(String secret) {
-        if (isRunning()) {
-            return true;
+    /**
+     * May download a pinned official binary. Call only from an asynchronous
+     * Bukkit task, never on the server's main tick thread.
+     */
+    public boolean start(String secret) {
+        synchronized (this) {
+            if (suspended) return false;
+            if (isRunning()) return true;
+            if (installing) return false;
+            installing = true;
+            lastLaunchAttempt = System.currentTimeMillis();
         }
-        if (secret == null || secret.length() < 32
-                || secret.length() % 2 != 0 || !secret.matches("[0-9a-fA-F]+")) {
-            log.warning("[playit.gg] Native backend needs a valid agent-secret. "
-                    + "Claim an agent using the legacy backend first, then switch to native.");
-            return false;
-        }
-        lastLaunchAttempt = System.currentTimeMillis();
+
         try {
-            Files.createDirectories(dataDir);
-            Path secretFile = dataDir.resolve("native-agent-secret.txt");
-            Path temporary = Files.createTempFile(dataDir, "native-key-", ".tmp");
-            try {
-                restrictToOwner(temporary);
-                Files.writeString(temporary, secret + System.lineSeparator(), StandardCharsets.UTF_8);
-                try {
-                    Files.move(temporary, secretFile, StandardCopyOption.REPLACE_EXISTING,
-                            StandardCopyOption.ATOMIC_MOVE);
-                } catch (java.nio.file.AtomicMoveNotSupportedException ignored) {
-                    Files.move(temporary, secretFile, StandardCopyOption.REPLACE_EXISTING);
-                }
-                restrictToOwner(secretFile);
-            } finally {
-                Files.deleteIfExists(temporary);
+            if (secret == null || secret.length() < 32
+                    || secret.length() % 2 != 0 || !secret.matches("[0-9a-fA-F]+")) {
+                lastFailure = "agent-secret missing or invalid";
+                log.warning("[playit.gg] Native backend needs a valid agent-secret. "
+                        + "Claim an agent using the legacy backend first, then switch to native.");
+                return false;
             }
 
-            ProcessBuilder builder = new ProcessBuilder(
-                    executable, "--secret-path", secretFile.toString(),
-                    "--socket-path", dataDir.resolve("playitd.sock").toString());
-            builder.directory(dataDir.toFile());
-            // Keep private diagnostics without blocking on undrained process output.
-            // Rotate previous output before launch so restarts do not grow it forever.
-            Path nativeLog = dataDir.resolve("native-agent.log");
-            if (Files.exists(nativeLog) && Files.size(nativeLog) > 2L * 1024 * 1024) {
-                Files.move(nativeLog, dataDir.resolve("native-agent.previous.log"),
-                        StandardCopyOption.REPLACE_EXISTING);
+            Path executablePath;
+            if (autoInstall && ("auto".equalsIgnoreCase(executable)
+                    || "playitd".equalsIgnoreCase(executable))) {
+                executablePath = PlayitNativeInstaller.ensure(dataDir, log);
+            } else if ("auto".equalsIgnoreCase(executable)) {
+                lastFailure = "native-auto-install disabled; specify native-binary";
+                log.warning("[playit.gg] " + lastFailure);
+                return false;
+            } else {
+                executablePath = Path.of(executable);
             }
-            if (Files.notExists(nativeLog)) {
-                Files.createFile(nativeLog);
+
+            synchronized (this) {
+                // Shutdown may have occurred during the download.
+                if (suspended) return false;
+                if (isRunning()) return true;
+
+                Files.createDirectories(dataDir);
+                Path secretFile = dataDir.resolve("native-agent-secret.txt");
+                Path temporary = Files.createTempFile(dataDir, "native-key-", ".tmp");
+                try {
+                    restrictToOwner(temporary);
+                    Files.writeString(temporary, secret + System.lineSeparator(), StandardCharsets.UTF_8);
+                    try {
+                        Files.move(temporary, secretFile, StandardCopyOption.REPLACE_EXISTING,
+                                StandardCopyOption.ATOMIC_MOVE);
+                    } catch (java.nio.file.AtomicMoveNotSupportedException ignored) {
+                        Files.move(temporary, secretFile, StandardCopyOption.REPLACE_EXISTING);
+                    }
+                    restrictToOwner(secretFile);
+                } finally {
+                    Files.deleteIfExists(temporary);
+                }
+
+                ProcessBuilder builder = new ProcessBuilder(
+                        executablePath.toString(), "--secret-path", secretFile.toString(),
+                        "--socket-path", dataDir.resolve("playitd.sock").toString());
+                builder.directory(dataDir.toFile());
+                Path nativeLog = dataDir.resolve("native-agent.log");
+                if (Files.exists(nativeLog) && Files.size(nativeLog) > 2L * 1024 * 1024) {
+                    Files.move(nativeLog, dataDir.resolve("native-agent.previous.log"),
+                            StandardCopyOption.REPLACE_EXISTING);
+                }
+                if (Files.notExists(nativeLog)) {
+                    Files.createFile(nativeLog);
+                }
+                restrictToOwner(nativeLog);
+                builder.redirectErrorStream(true);
+                builder.redirectOutput(ProcessBuilder.Redirect.appendTo(nativeLog.toFile()));
+                process = builder.start();
+                lastFailure = null;
+                log.info("[playit.gg] Started native playitd (PID " + process.pid()
+                        + ", executable: " + executablePath + "). "
+                        + "Java TCP, Bedrock UDP and voice UDP will use the same Playit agent.");
+                return true;
             }
-            restrictToOwner(nativeLog);
-            builder.redirectErrorStream(true);
-            builder.redirectOutput(ProcessBuilder.Redirect.appendTo(nativeLog.toFile()));
-            process = builder.start();
-            suspended = false;
-            log.info("[playit.gg] Started native playitd (PID " + process.pid() + "). "
-                    + "It forwards Java TCP, Bedrock UDP, and voice UDP tunnels configured for this agent.");
-            return true;
-        } catch (IOException error) {
-            log.warning("[playit.gg] Unable to launch native playitd executable '"
-                    + executable + "': " + error.getMessage());
+        } catch (IOException | SecurityException error) {
+            lastFailure = error.getMessage();
+            log.warning("[playit.gg] Native agent startup failed: " + error.getMessage()
+                    + ". The Minecraft server will remain online. See plugins/playit-gg/native-agent.log.");
             return false;
+        } finally {
+            installing = false;
         }
     }
 
-    public synchronized boolean keepAlive(String secret) {
-        if (suspended || isRunning()) {
-            return isRunning();
+    public boolean keepAlive(String secret) {
+        synchronized (this) {
+            if (suspended || installing || isRunning()) return isRunning();
+            if (System.currentTimeMillis() - lastLaunchAttempt < 30_000L) return false;
         }
-        if (System.currentTimeMillis() - lastLaunchAttempt < 30_000L) {
-            return false;
-        }
-        log.warning("[playit.gg] Native agent exited. Attempting to restart it.");
+        log.warning("[playit.gg] Native agent offline; attempting to restart it.");
         return start(secret);
     }
 
-    public synchronized boolean restart(String secret) {
-        stopProcess();
-        suspended = false;
+    public boolean restart(String secret) {
+        synchronized (this) {
+            stopProcess();
+            suspended = false;
+        }
         return start(secret);
     }
 
