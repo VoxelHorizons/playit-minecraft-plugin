@@ -43,7 +43,12 @@ public final class PlayitTunnelProvisioner {
             results.add(label + ": invalid local port " + port); return;
         }
         if (exists(tunnels, agentId, label, preset, proto, port)) {
-            results.add(label + ": already exists for this agent"); return;
+            if ("Java".equals(label)) {
+                checkJavaDestination(tunnels, agentId, port, results);
+            } else {
+                results.add(label + ": already exists for this agent");
+            }
+            return;
         }
 
         ObjectNode body = mapper.createObjectNode();
