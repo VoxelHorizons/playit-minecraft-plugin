@@ -53,6 +53,43 @@ public final class PlayitBukkit extends JavaPlugin implements Listener {
     private boolean autoCreateBedrockTunnel = false;
     private boolean promptAdminForBedrock = true;
 
+    private boolean hasVoiceChat() {
+        return new File(getDataFolder().getParentFile(),
+                "voicechat/voicechat-server.properties").isFile()
+                || Bukkit.getPluginManager().getPlugin("voicechat") != null;
+    }
+
+    private void provisionNativeTunnels(CommandSender requester, boolean useAutoSettings) {
+        boolean java = !useAutoSettings || getConfig().getBoolean("auto_create_java_tunnel", true);
+        boolean bedrock = isGeyserPresent && (!useAutoSettings || autoCreateBedrockTunnel);
+        boolean voice = hasVoiceChat() && (!useAutoSettings ||
+                getConfig().getBoolean("auto_create_voice_tunnel", true));
+        String key = nativeSecret;
+        if (key == null || key.length() < 32) {
+            if (requester != null) requester.sendMessage(ChatColor.RED +
+                    "[playit.gg] Agent secret missing; claim the agent before creating tunnels.");
+            return;
+        }
+        if (!java && !bedrock && !voice) {
+            return;
+        }
+        Bukkit.getScheduler().runTaskAsynchronously(this, () -> {
+            try {
+                var messages = new PlayitTunnelProvisioner(key).ensure(
+                        java, bedrock, voice, javaLocalPort, bedrockLocalPort, voiceLocalPort);
+                for (String message : messages) log.info("[playit.gg] " + message);
+                if (requester != null) Bukkit.getScheduler().runTask(this, () -> {
+                    for (String message : messages) requester.sendMessage(ChatColor.AQUA +
+                            "[playit.gg] " + message);
+                });
+            } catch (IOException error) {
+                log.warning("[playit.gg] Tunnel provisioning failed: " + error.getMessage());
+                if (requester != null) Bukkit.getScheduler().runTask(this, () ->
+                        requester.sendMessage(ChatColor.RED + "[playit.gg] " + error.getMessage()));
+            }
+        });
+    }
+
     @Override
     public void onEnable() {
         server = Bukkit.getServer();
@@ -106,6 +143,8 @@ public final class PlayitBukkit extends JavaPlugin implements Listener {
         getConfig().addDefault(CFG_VOICE_LOCAL_PORT, 24454);
         getConfig().addDefault(CFG_AGENT_BACKEND, "plugin");
         getConfig().addDefault(CFG_NATIVE_BINARY, "playitd");
+        getConfig().addDefault("auto_create_java_tunnel", true);
+        getConfig().addDefault("auto_create_voice_tunnel", true);
         saveDefaultConfig();
 
         // Read config values
@@ -131,6 +170,7 @@ public final class PlayitBukkit extends JavaPlugin implements Listener {
             nativeAgent = new PlayitNativeAgent(log, getDataFolder().toPath(),
                     getConfig().getString(CFG_NATIVE_BINARY, "playitd"));
             nativeAgent.start(nativeSecret);
+            provisionNativeTunnels(null, true);
             // Keep the managed process alive without blocking the Minecraft thread.
             Bukkit.getScheduler().runTaskTimerAsynchronously(this, () -> {
                 PlayitNativeAgent agent = nativeAgent;
@@ -405,13 +445,10 @@ public final class PlayitBukkit extends JavaPlugin implements Listener {
         }
 
         if (nativeAgent != null) {
-            sender.sendMessage(ChatColor.YELLOW + "[playit.gg] The native agent forwards all tunnel types.");
-            sender.sendMessage("Create three tunnels at https://playit.gg/account/tunnels:");
-            sender.sendMessage("  Minecraft Java -> TCP " + javaLocalPort);
-            sender.sendMessage("  Minecraft Bedrock -> UDP " + bedrockLocalPort + " (Geyser)");
-            sender.sendMessage("  MC: Simple Voice Chat -> UDP " + voiceLocalPort);
-            sender.sendMessage("Set voice_host to the PUBLIC voice address in voicechat-server.properties.");
-            sender.sendMessage("Run /playit tunnels after creating them to inspect assignments.");
+            sender.sendMessage(ChatColor.AQUA + "[playit.gg] Provisioning Java"
+                    + (isGeyserPresent ? ", Bedrock" : "")
+                    + (hasVoiceChat() ? ", Voice" : "") + " tunnels.");
+            provisionNativeTunnels(sender, false);
             return true;
         }
 
