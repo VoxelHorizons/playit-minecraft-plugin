@@ -149,8 +149,13 @@ public final class PlayitNativeInstaller {
                     hash.update(buffer, 0, count);
                 }
             }
-            return MessageDigest.isEqual(hash.digest(), java.util.HexFormat.of()
-                    .parseHex(expectedHex.toLowerCase(Locale.ROOT)));
+            byte[] digest = hash.digest();
+            StringBuilder hex = new StringBuilder(digest.length * 2);
+            for (byte value : digest) {
+                hex.append(Character.forDigit((value >>> 4) & 0x0f, 16));
+                hex.append(Character.forDigit(value & 0x0f, 16));
+            }
+            return hex.toString().equalsIgnoreCase(expectedHex);
         } catch (NoSuchAlgorithmException impossible) {
             throw new IOException("SHA-256 unavailable", impossible);
         }
