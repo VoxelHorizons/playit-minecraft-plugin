@@ -38,7 +38,7 @@ agent and playitd using the same key.** Native mode starts only the latter.
    auto_create_java_tunnel: true
    auto_create_bedrock_tunnel: true
    auto_create_voice_tunnel: true
-   java_local_port: 25565
+   java_local_port: 0  # auto-detect the Minecraft server port
    bedrock_local_port: 19132
    voice_local_port: 24454
    ```
