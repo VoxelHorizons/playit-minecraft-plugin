@@ -31,6 +31,32 @@ public class PlayitTunnelProvisionerTest {
     }
 
     @Test
+    void recognizesDedicatedVoicePresetBeforeCreatingDuplicateUdp() throws Exception {
+        JsonNode existing = tunnels("""
+                [{"name":"Voice","tunnel_type":"mc-simple-voice-chat",
+                  "port_type":"udp","origin":{"type":"agent","details":{
+                  "agent_id":"server-agent","config_data":{"fields":[
+                  {"name":"local_port","value":"24454"}]}}}}]
+                """);
+        assertTrue(PlayitTunnelProvisioner.exists(existing, "server-agent",
+                "Voice", "mc-simple-voice-chat", "udp", 24454));
+        assertFalse(PlayitTunnelProvisioner.exists(existing, "server-agent",
+                "Bedrock", "minecraft-bedrock", "udp", 19132));
+    }
+
+    @Test
+    void voicePresetOnAnotherAgentDoesNotHideMissingTunnel() throws Exception {
+        JsonNode existing = tunnels("""
+                [{"name":"Voice","tunnel_type":"mc-simple-voice-chat",
+                  "port_type":"udp","origin":{"type":"agent","details":{
+                  "agent_id":"some-other-agent","config_data":{"fields":[
+                  {"name":"local_port","value":"24454"}]}}}}]
+                """);
+        assertFalse(PlayitTunnelProvisioner.exists(existing, "server-agent",
+                "Voice", "mc-simple-voice-chat", "udp", 24454));
+    }
+
+    @Test
     void detectsExistingBedrockByTypeEvenWhenLocalPortDiffers() throws Exception {
         JsonNode existing = tunnels("""
                 [{"name":"Bedrock","tunnel_type":"minecraft-bedrock",
