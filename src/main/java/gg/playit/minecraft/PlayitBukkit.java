@@ -43,6 +43,7 @@ public final class PlayitBukkit extends JavaPlugin implements Listener {
     private volatile PlayitManager playitManager;
     private volatile PlayitNativeAgent nativeAgent;
     private volatile String nativeSecret;
+    private final java.util.concurrent.atomic.AtomicBoolean nativeLaunchBusy = new java.util.concurrent.atomic.AtomicBoolean(false);
 
     Server server;
 
@@ -178,8 +179,9 @@ public final class PlayitBukkit extends JavaPlugin implements Listener {
         if ("native".equalsIgnoreCase(getConfig().getString(CFG_AGENT_BACKEND, "plugin"))) {
             nativeSecret = secretKey;
             nativeAgent = new PlayitNativeAgent(log, getDataFolder().toPath(),
-                    getConfig().getString(CFG_NATIVE_BINARY, "playitd"));
-            nativeAgent.start(nativeSecret);
+                    getConfig().getString(CFG_NATIVE_BINARY, "playitd"),
+                    getConfig().getBoolean(CFG_NATIVE_AUTO_INSTALL, true));
+            launchNativeAgent(null, false);
             provisionNativeTunnels(null, true);
             // Keep the managed process alive without blocking the Minecraft thread.
             Bukkit.getScheduler().runTaskTimerAsynchronously(this, () -> {
