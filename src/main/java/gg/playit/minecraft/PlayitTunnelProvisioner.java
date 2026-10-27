@@ -71,6 +71,25 @@ public final class PlayitTunnelProvisioner {
             results.add(label + ": creation accepted (" + proto + " -> 127.0.0.1:" + port
                     + "); check /playit tunnels for the public address");
         } catch (IOException e) {
+            if ("Bedrock".equals(label)) {
+                // The preset can be restricted by the account/API. The single
+                // port UDP transport works for a standard Geyser RakNet listener.
+                ObjectNode fallback = body.deepCopy();
+                ObjectNode fallbackProtocol = fallback.putObject("protocol");
+                ObjectNode raw = fallbackProtocol.put("type", "raw-ports").putObject("details");
+                raw.put("port_type", "udp").put("port_count", 1)
+                        .put("software_description", "Geyser Bedrock");
+                try {
+                    call("/v1/tunnels/create", fallback);
+                    results.add("Bedrock: preset unavailable; custom UDP tunnel creation accepted"
+                            + " (127.0.0.1:" + port + ")");
+                    return;
+                } catch (IOException fallbackError) {
+                    results.add("Bedrock: preset failed (" + e.getMessage()
+                            + "), custom UDP fallback also failed (" + fallbackError.getMessage() + ")");
+                    return;
+                }
+            }
             results.add(label + ": API rejected creation: " + e.getMessage());
         }
     }
