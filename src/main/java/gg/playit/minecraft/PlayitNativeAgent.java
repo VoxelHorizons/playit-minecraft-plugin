@@ -116,6 +116,12 @@ public final class PlayitNativeAgent {
         stopProcess();
     }
 
+    /** Ensure agent reset does not leave the old key in a sidecar file. */
+    public synchronized void reset() throws IOException {
+        stop();
+        Files.deleteIfExists(dataDir.resolve("native-agent-secret.txt"));
+    }
+
     private void stopProcess() {
         Process current = process;
         process = null;
