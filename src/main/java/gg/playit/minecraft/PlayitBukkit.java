@@ -558,7 +558,13 @@ public final class PlayitBukkit extends JavaPlugin implements Listener {
                 return true;
             }
             case "reset" -> {
-                agent.stop();
+                try {
+                    agent.reset();
+                } catch (IOException error) {
+                    sender.sendMessage(ChatColor.RED + "Could not remove the old native key file: "
+                            + error.getMessage());
+                    return true;
+                }
                 nativeSecret = "";
                 getConfig().set(CFG_AGENT_SECRET_KEY, "");
                 saveConfig();
