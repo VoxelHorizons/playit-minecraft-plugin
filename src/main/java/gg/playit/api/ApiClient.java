@@ -1,6 +1,7 @@
 package gg.playit.api;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import gg.playit.api.actions.*;
 import gg.playit.api.models.*;
 import gg.playit.minecraft.utils.DecoderException;
@@ -17,7 +18,8 @@ public class ApiClient {
 
     private final HttpClient client;
     private final String secret;
-    private final ObjectMapper mapper = new ObjectMapper();
+    private final ObjectMapper mapper = new ObjectMapper()
+            .enable(DeserializationFeature.READ_UNKNOWN_ENUM_VALUES_USING_DEFAULT_VALUE);
 
     public ApiClient(String secret) {
         client = HttpClient.newHttpClient();
