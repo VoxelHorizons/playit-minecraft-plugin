@@ -620,12 +620,14 @@ public final class PlayitBukkit extends JavaPlugin implements Listener {
                     sender.sendMessage(ChatColor.RED + "Supply a valid agent secret.");
                     return true;
                 }
+                if (nativeLaunchBusy.get()) {
+                    sender.sendMessage(ChatColor.YELLOW + "Agent startup is in progress. Retry shortly.");
+                    return true;
+                }
                 nativeSecret = args[2];
                 getConfig().set(CFG_AGENT_SECRET_KEY, nativeSecret);
                 saveConfig();
-                sender.sendMessage(agent.restart(nativeSecret)
-                        ? "Secret updated and native playitd restarted."
-                        : "Secret updated but playitd failed to start.");
+                launchNativeAgent(sender, true);
                 return true;
             }
             default -> {
