@@ -1,6 +1,7 @@
 package gg.playit.api.models;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonEnumDefaultValue;
 
 public enum TunnelType {
     @JsonProperty("minecraft-java")
@@ -9,7 +10,7 @@ public enum TunnelType {
     MinecraftBedrock,
     @JsonProperty("valheim")
     Valheim,
-    @JsonProperty("valheim")
+    @JsonProperty("terraria")
     Terraria,
     @JsonProperty("starbound")
     Starbound,
@@ -19,6 +20,10 @@ public enum TunnelType {
     SevenDays,
     @JsonProperty("unturned")
     Unturned,
+    @JsonProperty("mc-simple-voice-chat")
+    McSimpleVoiceChat,
     @JsonProperty("custom")
-    Custom
+    Custom,
+    @JsonEnumDefaultValue
+    Unknown
 }
